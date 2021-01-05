@@ -109,59 +109,106 @@ class BoomDataGUI:
         self._atmos_plot.setRange(xRange=[-150, 150])
 
         # Plot data
-        self._T_curve = self._atmos_plot.plot(self._T, self._h, pen=(255, 0, 0), name='T')
-        self._u_curve = self._atmos_plot.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity')
-        self._v_curve = self._atmos_plot.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity')
-        self._RH_curve = self._atmos_plot.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity')
+        self._T_curve = self._atmos_plot.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
+        self._u_curve = self._atmos_plot.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
+        self._v_curve = self._atmos_plot.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
+        self._RH_curve = self._atmos_plot.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
 
 
     def _initialize_flight_plot(self):
 
-        # Initialize scrolling parameter
+        # Initialize data curve origin (incrementing this leads to the scrolling effect)
         self._ptr = 0
 
-        # Create Mach axis
-        self._M_axis = pg.AxisItem('left')
-        self._M_axis.setLabel('Mach')
-        self._M_view = pg.ViewBox()
-        self._M_curve = pg.PlotCurveItem(self._flight_data[1], pen=(0, 255, 0), name='Mach Number')
-        self._flight_data_layout.addItem(self._M_axis, col=3)
+        # Create altitude plot
+        h_color = "#0000FF"
+        self._h_axis = pg.AxisItem('left')
+        self._h_axis.setLabel('Altitude', units='m', color=h_color)
+        self._h_view = pg.ViewBox()
+        self._h_curve = pg.PlotCurveItem(self._flight_data[2], pen=h_color)
 
-        # Create base plot (altitude)
-        self._h_plot = pg.PlotItem()
-        self._h_view = self._h_plot.vb
-        self._flight_data_layout.addItem(self._h_plot, col=4)
-        self._h_plot.setLabel('bottom', 'Time', units='s')
-        self._h_plot.setLabel('left', 'Altitude', units='m')
-        self._h_plot.addLegend()
-        self._h_curve = pg.PlotCurveItem(self._flight_data[2], pen=(0, 0, 255), name='Altitude')
+        # Create Mach plot
+        M_color = "#00FF00"
+        self._M_axis = pg.AxisItem('left')
+        self._M_axis.setLabel('Mach Number', color=M_color)
+        self._M_view = pg.ViewBox()
+        self._M_curve = pg.PlotCurveItem(self._flight_data[1], pen=M_color)
+
+        # Create angle of attack plot
+        a_color = "#FFFF00"
+        self._a_axis = pg.AxisItem('left')
+        self._a_axis.setLabel('Angle of Attack', units='deg', color=a_color)
+        self._a_view = pg.ViewBox()
+        self._a_curve = pg.PlotCurveItem(self._flight_data[0], pen=a_color)
+
+        # Create baseline PLdB plot
+        pldb_base_color = "#FF0000"
+        self._pldb_base_axis = pg.AxisItem('left')
+        self._pldb_base_axis.setLabel('PL (baseline)', units='dB', color=pldb_base_color)
+        self._pldb_base_view = pg.ViewBox()
+        self._pldb_base_curve = pg.PlotCurveItem(self._flight_data[3], pen=pldb_base_color)
+
+        # Create optimum PLdB plot
+        pldb_opt_color = "#FF5555"
+        self._pldb_opt_axis = pg.AxisItem('left')
+        self._pldb_opt_axis.setLabel('PL (optimum)', units='dB', color=pldb_opt_color)
+        self._pldb_opt_view = pg.ViewBox()
+        self._pldb_opt_curve = pg.PlotCurveItem(self._flight_data[4], pen=pldb_opt_color)
+
+        # Create time axis
+        self._t_axis = pg.AxisItem('bottom')
+        self._t_axis.setLabel('Time', units='s')
+
+        # Create title
+        title = pg.LabelItem('Flight Data')
+        self._flight_data_layout.addItem(title, row=1, col=1, colspan=6)
+
+        # Add axes to layout (# of col determines axis order; h needs to be last)
+        self._flight_data_layout.addItem(self._h_view, row=2, col=6)
+        self._flight_data_layout.addItem(self._t_axis, row=3, col=6)
+        self._flight_data_layout.addItem(self._h_axis, row=2, col=5)
+        self._flight_data_layout.addItem(self._M_axis, row=2, col=4)
+        self._flight_data_layout.addItem(self._a_axis, row=2, col=3)
+        self._flight_data_layout.addItem(self._pldb_base_axis, row=2, col=2)
+        self._flight_data_layout.addItem(self._pldb_opt_axis, row=2, col=1)
 
         # Add viewboxes to layout
         self._flight_data_layout.scene().addItem(self._M_view)
+        self._flight_data_layout.scene().addItem(self._a_view)
+        self._flight_data_layout.scene().addItem(self._pldb_base_view)
+        self._flight_data_layout.scene().addItem(self._pldb_opt_view)
 
-        # Link axis with viewboxes
+        # Link axes with viewboxes
+        self._t_axis.linkToView(self._h_view)
+        self._h_axis.linkToView(self._h_view)
         self._M_axis.linkToView(self._M_view)
+        self._a_axis.linkToView(self._a_view)
+        self._pldb_base_axis.linkToView(self._pldb_base_view)
+        self._pldb_opt_axis.linkToView(self._pldb_opt_view)
 
-        # Link viewboxes
+        # Link x axis of viewboxes to base plot
         self._M_view.setXLink(self._h_view)
+        self._a_view.setXLink(self._h_view)
+        self._pldb_base_view.setXLink(self._h_view)
+        self._pldb_opt_view.setXLink(self._h_view)
 
-        # Add data plots to viewboxes
+        # Link PL dB y scale
+        self._pldb_opt_view.setYLink(self._pldb_base_view)
+
+        # Add data curves to viewboxes
         self._h_view.addItem(self._h_curve)
         self._M_view.addItem(self._M_curve)
+        self._a_view.addItem(self._a_curve)
+        self._pldb_base_view.addItem(self._pldb_base_curve)
+        self._pldb_opt_view.addItem(self._pldb_opt_curve)
 
         # Update views when resized
         def update_flight_data_views():
             self._M_view.setGeometry(self._h_view.sceneBoundingRect())
-
+            self._a_view.setGeometry(self._h_view.sceneBoundingRect())
+            self._pldb_base_view.setGeometry(self._h_view.sceneBoundingRect())
+            self._pldb_opt_view.setGeometry(self._h_view.sceneBoundingRect())
         self._h_view.sigResized.connect(update_flight_data_views)
-
-        # Autorange at start
-        self._M_view.enableAutoRange(axis=pg.ViewBox.XYAxes, enable=True)
-
-        ## Initialize flight data curves
-        #self._a_curve = self._h_plot.plot(self._flight_data[0], pen=(255, 255, 0), name='Angle of Attack')
-        #self._pldb_base_curve = self._h_plot.plot(self._flight_data[3], pen=(255, 0, 0), name='PL dB Baseline')
-        #self._pldb_opt_curve = self._h_plot.plot(self._flight_data[4], pen=(255, 128, 128), name='PL dB Modified')
 
 
     def start(self):
@@ -193,11 +240,11 @@ class BoomDataGUI:
     def _update_atmos_data(self):
         # Updates the data shown in the atmospheric profile plot
 
-        self._h += np.random.normal(size=len(self._h), scale=0.1)
-        self._T += np.random.normal(size=len(self._T), scale=0.1)
-        self._u += np.random.normal(size=len(self._u), scale=0.1)
-        self._v += np.random.normal(size=len(self._v), scale=0.1)
-        self._RH += np.random.normal(size=len(self._RH), scale=0.1)
+        self._h += np.random.normal(size=len(self._h), scale=0.01)
+        self._T += np.random.normal(size=len(self._T), scale=0.01)
+        self._u += np.random.normal(size=len(self._u), scale=0.01)
+        self._v += np.random.normal(size=len(self._v), scale=0.01)
+        self._RH += np.random.normal(size=len(self._RH), scale=0.01)
 
 
     def _update_flight_data(self):
@@ -230,10 +277,10 @@ class BoomDataGUI:
         M = self._flight_data[1,-1]
         if M > 1.0:
             self._flight_data[3,-1] = 83.0*M**0.5+np.random.normal(size=1, scale=0.5)
-            self._flight_data[4,-1] = 80.0*M**0.5+np.random.normal(size=1, scale=0.5)
+            self._flight_data[4,-1] = 80.0*M**0.4+np.random.normal(size=1, scale=0.5)
         else:
-            self._flight_data[3,-1] = 0.0
-            self._flight_data[4,-1] = 0.0
+            self._flight_data[3,-1] = 0.1
+            self._flight_data[4,-1] = 0.1
 
 
     def _update_atmos_plot(self):
@@ -251,20 +298,30 @@ class BoomDataGUI:
         # Scroll
         self._ptr += 1
 
-        # Mach number
-        self._M_curve.setData(self._flight_data[1])
-        self._M_curve.setPos(self._ptr, 0)
-
         # Altitude
         self._h_curve.setData(self._flight_data[2])
         self._h_curve.setPos(self._ptr, 0)
+        self._h_view.setRange(yRange=(0, np.max(self._flight_data[2])))
 
-        #self._a_curve.setData(self._flight_data[0])
-        #self._a_curve.setPos(self._ptr, 0)
-        #self._pldb_base_curve.setData(self._flight_data[3])
-        #self._pldb_base_curve.setPos(self._ptr, 0)
-        #self._pldb_opt_curve.setData(self._flight_data[4])
-        #self._pldb_opt_curve.setPos(self._ptr, 0)
+        # Mach number
+        self._M_curve.setData(self._flight_data[1])
+        self._M_curve.setPos(self._ptr, 0)
+        self._M_view.setRange(yRange=(0, 1.5*np.max(self._flight_data[1])))
+
+        # Angle of attack
+        self._a_curve.setData(self._flight_data[0])
+        self._a_curve.setPos(self._ptr, 0)
+        self._a_view.setRange(yRange=(0, 1.25*np.max(self._flight_data[0])))
+
+        # Baseline PL dB
+        self._pldb_base_curve.setData(self._flight_data[3])
+        self._pldb_base_curve.setPos(self._ptr, 0)
+        self._pldb_base_view.setRange(yRange=(0, np.max(self._flight_data[3])))
+
+        # Optimum PL dB
+        self._pldb_opt_curve.setData(self._flight_data[4])
+        self._pldb_opt_curve.setPos(self._ptr, 0)
+
 
 
 if __name__=="__main__":
