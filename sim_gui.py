@@ -16,24 +16,18 @@ class BoomDataGUI:
         self._win = pg.GraphicsLayoutWidget(show=True, border=0.5)
         self._win.setWindowTitle('BoomSim Data')
 
+        # Set up window layout
+        self._main_layout = QtGui.QGridLayout()
+        self._win.setLayout(self._main_layout)
+
         # Initialize data
         self._initialize_atmos_data()
         self._initialize_flight_data()
 
         # Set up plots
-
-        # Top row
-        self._place_near_field_plot(row=1, col=1, rowspan=1, colspan=1)
-        self._place_geom_plot(row=1, col=2, rowspan=1, colspan=2)
-
-        # Middle row
-        self._place_atmos_plot(row=2, col=1, rowspan=2, colspan=1)
-        self._place_flight_plot(row=2, col=2, rowspan=2, colspan=2)
-
-        # Bottom row
-        self._place_boom_plot(row=4, col=1, rowspan=1, colspan=1)
-        self._place_pldb_comp(row=4, col=2, rowspan=1, colspan=1)
-        self._place_boom_carpet(row=4, col=3, rowspan=1, colspan=1)
+        self._arrange_plots()
+        self._initialize_atmos_plot()
+        self._initialize_flight_plot()
 
 
     def _initialize_atmos_data(self):
@@ -89,21 +83,27 @@ class BoomDataGUI:
 
         # Initialize flight data
         self._flight_data = np.zeros((5, 300))
-        
 
 
-    def _place_near_field_plot(self, **kwargs):
-        self._near_field_plot = self._win.addPlot(title="Near-Field Pressure", **kwargs)
+    def _arrange_plots(self):
+
+        # Top row
+        self._near_field_view = self._win.addViewBox(row=1, col=1, rowspan=1, colspan=1)
+        self._geom_view = self._win.addViewBox(row=1, col=2, rowspan=1, colspan=2)
+
+        # Middle row
+        self._atmos_plot = self._win.addPlot(title="Atmospheric Profile", row=2, col=1, rowspan=2, colspan=1)
+        self._flight_data_layout = self._win.addLayout(row=2, col=2, rowspan=2, colspan=2)
+
+        # Bottom row
+        self._boom_view = self._win.addViewBox(row=4, col=1, rowspan=1, colspan=1)
+        self._pldb_view = self._win.addViewBox(row=4, col=2, rowspan=1, colspan=1)
+        self._boom_carpet_view = self._win.addViewBox(row=4, col=3, rowspan=1, colspan=1)
 
 
-    def _place_geom_plot(self, **kwargs):
-        self._geom_plot = self._win.addPlot(title="Optimal Geometry Alteration", **kwargs)
-
-
-    def _place_atmos_plot(self, **kwargs):
+    def _initialize_atmos_plot(self):
 
         # Initialize plot
-        self._atmos_plot = self._win.addPlot(title="Atmospheric Profile", **kwargs)
         self._atmos_plot.setLabel('left', 'Altitude [m]')
         self._atmos_plot.addLegend()
         self._atmos_plot.setRange(xRange=[-150, 150])
@@ -111,37 +111,57 @@ class BoomDataGUI:
         # Plot data
         self._T_curve = self._atmos_plot.plot(self._T, self._h, pen=(255, 0, 0), name='T')
         self._u_curve = self._atmos_plot.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity')
-        self._v_curve = self._atmos_plot.plot(self._v, self._h, pen=(255, 255, 55), name='Wind y-Velocity')
+        self._v_curve = self._atmos_plot.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity')
         self._RH_curve = self._atmos_plot.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity')
 
 
-    def _place_flight_plot(self, **kwargs):
+    def _initialize_flight_plot(self):
 
-        # Initialize flight data plot
-        self._flight_data_plot = self._win.addPlot(title="Flight Data", **kwargs)
+        # Initialize scrolling parameter
         self._ptr = 0
-        self._flight_data_plot.setLabel('bottom', 'Time', units='s')
-        self._flight_data_plot.setLabel('left', 'Altitude', units='m')
-        self._flight_data_plot.addLegend()
 
-        # Initialize flight data curves
-        self._a_curve = self._flight_data_plot.plot(self._flight_data[0], pen=(255, 255, 0), name='Angle of Attack')
-        self._M_curve = self._flight_data_plot.plot(self._flight_data[1], pen=(0, 255, 0), name='Mach Number')
-        self._h_curve = self._flight_data_plot.plot(self._flight_data[2], pen=(0, 0, 255), name='Altitude')
-        self._pldb_base_curve = self._flight_data_plot.plot(self._flight_data[3], pen=(255, 0, 0), name='PL dB Baseline')
-        self._pldb_opt_curve = self._flight_data_plot.plot(self._flight_data[4], pen=(255, 128, 128), name='PL dB Modified')
+        # Create Mach axis
+        self._M_axis = pg.AxisItem('left')
+        self._M_axis.setLabel('Mach')
+        self._M_view = pg.ViewBox()
+        self._M_curve = pg.PlotCurveItem(self._flight_data[1], pen=(0, 255, 0), name='Mach Number')
+        self._flight_data_layout.addItem(self._M_axis, col=3)
 
+        # Create base plot (altitude)
+        self._h_plot = pg.PlotItem()
+        self._h_view = self._h_plot.vb
+        self._flight_data_layout.addItem(self._h_plot, col=4)
+        self._h_plot.setLabel('bottom', 'Time', units='s')
+        self._h_plot.setLabel('left', 'Altitude', units='m')
+        self._h_plot.addLegend()
+        self._h_curve = pg.PlotCurveItem(self._flight_data[2], pen=(0, 0, 255), name='Altitude')
 
-    def _place_boom_plot(self, **kwargs):
-        self._boom_plot = self._win.addPlot(title="Ground Pressure", **kwargs)
+        # Add viewboxes to layout
+        self._flight_data_layout.scene().addItem(self._M_view)
 
+        # Link axis with viewboxes
+        self._M_axis.linkToView(self._M_view)
 
-    def _place_pldb_comp(self, **kwargs):
-        self._pldb_comp = self._win.addPlot(title="PL dB", **kwargs)
+        # Link viewboxes
+        self._M_view.setXLink(self._h_view)
 
+        # Add data plots to viewboxes
+        self._h_view.addItem(self._h_curve)
+        self._M_view.addItem(self._M_curve)
 
-    def _place_boom_carpet(self, **kwargs):
-        self._boom_carpet = self._win.addPlot(title="Boom Carpet", **kwargs)
+        # Update views when resized
+        def update_flight_data_views():
+            self._M_view.setGeometry(self._h_view.sceneBoundingRect())
+
+        self._h_view.sigResized.connect(update_flight_data_views)
+
+        # Autorange at start
+        self._M_view.enableAutoRange(axis=pg.ViewBox.XYAxes, enable=True)
+
+        ## Initialize flight data curves
+        #self._a_curve = self._h_plot.plot(self._flight_data[0], pen=(255, 255, 0), name='Angle of Attack')
+        #self._pldb_base_curve = self._h_plot.plot(self._flight_data[3], pen=(255, 0, 0), name='PL dB Baseline')
+        #self._pldb_opt_curve = self._h_plot.plot(self._flight_data[4], pen=(255, 128, 128), name='PL dB Modified')
 
 
     def start(self):
@@ -154,7 +174,8 @@ class BoomDataGUI:
 
         # Run loop
         if sys.flags.interactive != 1 or not hasattr(QtCore, 'PYQT_VERSION'):
-            QtGui.QApplication.instance().exec_()
+            app = QtGui.QApplication([])
+            app.exec_()
 
 
     def _update_graphics(self):
@@ -227,17 +248,23 @@ class BoomDataGUI:
     def _update_flight_plot(self):
         # Updates the flight data plot
 
+        # Scroll
         self._ptr += 1
-        self._a_curve.setData(self._flight_data[0])
-        self._a_curve.setPos(self._ptr, 0)
+
+        # Mach number
         self._M_curve.setData(self._flight_data[1])
         self._M_curve.setPos(self._ptr, 0)
+
+        # Altitude
         self._h_curve.setData(self._flight_data[2])
         self._h_curve.setPos(self._ptr, 0)
-        self._pldb_base_curve.setData(self._flight_data[3])
-        self._pldb_base_curve.setPos(self._ptr, 0)
-        self._pldb_opt_curve.setData(self._flight_data[4])
-        self._pldb_opt_curve.setPos(self._ptr, 0)
+
+        #self._a_curve.setData(self._flight_data[0])
+        #self._a_curve.setPos(self._ptr, 0)
+        #self._pldb_base_curve.setData(self._flight_data[3])
+        #self._pldb_base_curve.setPos(self._ptr, 0)
+        #self._pldb_opt_curve.setData(self._flight_data[4])
+        #self._pldb_opt_curve.setPos(self._ptr, 0)
 
 
 if __name__=="__main__":
