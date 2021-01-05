@@ -4,6 +4,7 @@ import sys
 
 import pyqtgraph as pg
 import numpy as np
+import math as m
 
 from pyqtgraph.Qt import QtCore, QtGui
 
@@ -18,8 +19,6 @@ class BoomDataGUI:
         # Initialize window
         self._main_widget = pg.LayoutWidget()
         self._main_widget.setWindowTitle('BoomSim Data')
-        #self._main_layout = QtGui.QGridLayout()
-        #self._main_widget.setLayout(self._main_layout)
 
         # Initialize data
         self._initialize_near_field_data()
@@ -29,21 +28,23 @@ class BoomDataGUI:
         # Initialize sub layouts and widgets
         self._atmos_plot_widget = pg.PlotWidget()
         self._flight_data_widget = pg.GraphicsLayoutWidget()
+        self._boom_widget = pg.PlotWidget()
+        self._pldb_widget = pg.PlotWidget()
 
         # Arrange window
 
         # Top row
         self._near_field_widget = self._main_widget.addLayout(row=1, col=1, rowspan=1, colspan=1)
-        #self._geom_view = self._main_widget.addViewBox(row=1, col=2, rowspan=1, colspan=2)
+        self._geom_widget = self._main_widget.addLayout(row=1, col=2, rowspan=1, colspan=2)
 
         # Middle row
         self._main_widget.addWidget(self._atmos_plot_widget, row=2, col=1, rowspan=2, colspan=1)
         self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=2, colspan=2)
 
         # Bottom row
-        #self._boom_view = self._main_widget.addViewBox(row=4, col=1, rowspan=1, colspan=1)
-        #self._pldb_view = self._main_widget.addViewBox(row=4, col=2, rowspan=1, colspan=1)
-        #self._boom_carpet_view = self._main_widget.addViewBox(row=4, col=3, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._boom_widget, row=4, col=1, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._boom_widget, row=4, col=2, rowspan=1, colspan=1)
+        self._boom_carpet_widget = self._main_widget.addLayout(row=4, col=3, rowspan=1, colspan=1)
 
         # Set up individual widgets
         self._initialize_near_field_graphic()
@@ -147,14 +148,28 @@ class BoomDataGUI:
 
         # Add pressure plot
         self._P_nf_plot.addLegend()
-        self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
-        self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
+        self._P_nf_baseline_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
+        self._P_nf_optimum_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
 
         # Add slider
         self._P_nf_silder = QtGui.QSlider(QtCore.Qt.Horizontal)
         self._P_nf_silder.setMinimum(-90)
         self._P_nf_silder.setMaximum(90)
         self._near_field_widget.addWidget(self._P_nf_silder, row=1, col=2)
+        
+        # Set up slider connection
+        self._P_nf_angle = 0.0
+        self._P_nf_silder.valueChanged.connect(self._update_near_field_angle)
+
+
+    def _update_near_field_angle(self):
+        # Updates the near-field pressure signature based on the angle of the slider
+
+        # Store value
+        self._P_nf_angle = float(self._P_nf_silder.value())
+
+        # Update graph
+        self._update_near_field_graph()
 
 
     def _initialize_atmos_plot(self):
@@ -364,6 +379,12 @@ class BoomDataGUI:
         self._pldb_opt_curve.setData(self._flight_data[4])
         self._pldb_opt_curve.setPos(self._ptr, 0)
 
+
+    def _update_near_field_graph(self):
+        # Updates the near-field graph
+
+        self._P_nf_baseline_curve.setData(self._nf_press_data[:,0], self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+self._nf_press_data[:,1]**0.5*abs(m.sin(m.radians(self._P_nf_angle))))
+        self._P_nf_optimum_curve.setData(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+0.8*self._nf_press_data[:,1]**0.5*abs(m.sin(m.radians(self._P_nf_angle))))
 
 
 if __name__=="__main__":
