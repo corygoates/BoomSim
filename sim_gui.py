@@ -12,24 +12,59 @@ class BoomDataGUI:
 
     def __init__(self):
 
-        # Initialize window
-        self._win = pg.GraphicsLayoutWidget(show=True, border=0.5)
-        self._win.setWindowTitle('BoomSim Data')
+        # Initialize application
+        self._app = QtGui.QApplication([])
 
-        # Set up window layout
-        self._main_layout = QtGui.QGridLayout()
-        self._win.setLayout(self._main_layout)
+        # Initialize window
+        self._main_widget = pg.LayoutWidget()
+        self._main_widget.setWindowTitle('BoomSim Data')
+        #self._main_layout = QtGui.QGridLayout()
+        #self._main_widget.setLayout(self._main_layout)
 
         # Initialize data
         self._initialize_near_field_data()
         self._initialize_atmos_data()
         self._initialize_flight_data()
 
-        # Set up plots
-        self._arrange_plots()
+        # Initialize sub layouts and widgets
+        self._atmos_plot_widget = pg.PlotWidget()
+        self._flight_data_widget = pg.GraphicsLayoutWidget()
+
+        # Arrange window
+
+        # Top row
+        self._near_field_widget = self._main_widget.addLayout(row=1, col=1, rowspan=1, colspan=1)
+        #self._geom_view = self._main_widget.addViewBox(row=1, col=2, rowspan=1, colspan=2)
+
+        # Middle row
+        self._main_widget.addWidget(self._atmos_plot_widget, row=2, col=1, rowspan=2, colspan=1)
+        self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=2, colspan=2)
+
+        # Bottom row
+        #self._boom_view = self._main_widget.addViewBox(row=4, col=1, rowspan=1, colspan=1)
+        #self._pldb_view = self._main_widget.addViewBox(row=4, col=2, rowspan=1, colspan=1)
+        #self._boom_carpet_view = self._main_widget.addViewBox(row=4, col=3, rowspan=1, colspan=1)
+
+        # Set up individual widgets
         self._initialize_near_field_graphic()
         self._initialize_atmos_plot()
         self._initialize_flight_plot()
+
+
+    def start(self):
+        """Starts the GUI."""
+
+        # Set timer
+        self._timer = QtCore.QTimer()
+        self._timer.timeout.connect(self._update_graphics)
+        self._timer.start(50)
+
+        # Show window
+        self._main_widget.show()
+
+        # Run loop
+        if sys.flags.interactive != 1 or not hasattr(QtCore, 'PYQT_VERSION'):
+            self._app.exec_()
 
 
     def _initialize_near_field_data(self):
@@ -103,27 +138,14 @@ class BoomDataGUI:
         self._flight_data = np.zeros((5, 300))
 
 
-    def _arrange_plots(self):
-
-        # Top row
-        self._near_field_layout = self._win.addLayout(row=1, col=1, rowspan=1, colspan=1)
-        self._geom_view = self._win.addViewBox(row=1, col=2, rowspan=1, colspan=2)
-
-        # Middle row
-        self._atmos_plot = self._win.addPlot(title="Atmospheric Profile", row=2, col=1, rowspan=2, colspan=1)
-        self._flight_data_layout = self._win.addLayout(row=2, col=2, rowspan=2, colspan=2)
-
-        # Bottom row
-        self._boom_view = self._win.addViewBox(row=4, col=1, rowspan=1, colspan=1)
-        self._pldb_view = self._win.addViewBox(row=4, col=2, rowspan=1, colspan=1)
-        self._boom_carpet_view = self._win.addViewBox(row=4, col=3, rowspan=1, colspan=1)
-
-
     def _initialize_near_field_graphic(self):
         # Set up near-field pressure graphic
 
+        # Create plot widget
+        self._P_nf_plot = pg.PlotWidget(title='Near-Field Pressure Signature')
+        self._near_field_widget.addWidget(self._P_nf_plot, row=2, col=1)
+
         # Add pressure plot
-        self._P_nf_plot = self._near_field_layout.addPlot(title='Near-Field Pressure Signature', row=2, col=1)
         self._P_nf_plot.addLegend()
         self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
         self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
@@ -132,21 +154,21 @@ class BoomDataGUI:
         self._P_nf_silder = QtGui.QSlider(QtCore.Qt.Horizontal)
         self._P_nf_silder.setMinimum(-90)
         self._P_nf_silder.setMaximum(90)
-        self._near_field_layout.addWidget(self._P_nf_silder, row=1, col=2)
+        self._near_field_widget.addWidget(self._P_nf_silder, row=1, col=2)
 
 
     def _initialize_atmos_plot(self):
 
         # Initialize plot
-        self._atmos_plot.setLabel('left', 'Altitude [m]')
-        self._atmos_plot.addLegend()
-        self._atmos_plot.setRange(xRange=[-150, 150])
+        self._atmos_plot_widget.setLabel('left', 'Altitude [m]')
+        self._atmos_plot_widget.addLegend()
+        self._atmos_plot_widget.setRange(xRange=[-150, 150])
 
         # Plot data
-        self._T_curve = self._atmos_plot.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
-        self._u_curve = self._atmos_plot.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
-        self._v_curve = self._atmos_plot.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
-        self._RH_curve = self._atmos_plot.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
+        self._T_curve = self._atmos_plot_widget.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
+        self._u_curve = self._atmos_plot_widget.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
+        self._v_curve = self._atmos_plot_widget.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
+        self._RH_curve = self._atmos_plot_widget.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
 
 
     def _initialize_flight_plot(self):
@@ -195,22 +217,22 @@ class BoomDataGUI:
 
         # Create title
         title = pg.LabelItem('Flight Data')
-        self._flight_data_layout.addItem(title, row=1, col=1, colspan=6)
+        self._flight_data_widget.addItem(title, row=1, col=1, colspan=6)
 
         # Add axes to layout (# of col determines axis order; h needs to be last)
-        self._flight_data_layout.addItem(self._h_view, row=2, col=6)
-        self._flight_data_layout.addItem(self._t_axis, row=3, col=6)
-        self._flight_data_layout.addItem(self._h_axis, row=2, col=5)
-        self._flight_data_layout.addItem(self._M_axis, row=2, col=4)
-        self._flight_data_layout.addItem(self._a_axis, row=2, col=3)
-        self._flight_data_layout.addItem(self._pldb_base_axis, row=2, col=2)
-        self._flight_data_layout.addItem(self._pldb_opt_axis, row=2, col=1)
+        self._flight_data_widget.addItem(self._h_view, row=2, col=6)
+        self._flight_data_widget.addItem(self._t_axis, row=3, col=6)
+        self._flight_data_widget.addItem(self._h_axis, row=2, col=5)
+        self._flight_data_widget.addItem(self._M_axis, row=2, col=4)
+        self._flight_data_widget.addItem(self._a_axis, row=2, col=3)
+        self._flight_data_widget.addItem(self._pldb_base_axis, row=2, col=2)
+        self._flight_data_widget.addItem(self._pldb_opt_axis, row=2, col=1)
 
         # Add viewboxes to layout
-        self._flight_data_layout.scene().addItem(self._M_view)
-        self._flight_data_layout.scene().addItem(self._a_view)
-        self._flight_data_layout.scene().addItem(self._pldb_base_view)
-        self._flight_data_layout.scene().addItem(self._pldb_opt_view)
+        self._flight_data_widget.scene().addItem(self._M_view)
+        self._flight_data_widget.scene().addItem(self._a_view)
+        self._flight_data_widget.scene().addItem(self._pldb_base_view)
+        self._flight_data_widget.scene().addItem(self._pldb_opt_view)
 
         # Link axes with viewboxes
         self._t_axis.linkToView(self._h_view)
@@ -243,20 +265,6 @@ class BoomDataGUI:
             self._pldb_base_view.setGeometry(self._h_view.sceneBoundingRect())
             self._pldb_opt_view.setGeometry(self._h_view.sceneBoundingRect())
         self._h_view.sigResized.connect(update_flight_data_views)
-
-
-    def start(self):
-        """Starts the GUI."""
-
-        # Set timer
-        self._timer = QtCore.QTimer()
-        self._timer.timeout.connect(self._update_graphics)
-        self._timer.start(50)
-
-        # Run loop
-        if sys.flags.interactive != 1 or not hasattr(QtCore, 'PYQT_VERSION'):
-            app = QtGui.QApplication([])
-            app.exec_()
 
 
     def _update_graphics(self):
