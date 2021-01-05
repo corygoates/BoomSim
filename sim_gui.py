@@ -21,13 +21,31 @@ class BoomDataGUI:
         self._win.setLayout(self._main_layout)
 
         # Initialize data
+        self._initialize_near_field_data()
         self._initialize_atmos_data()
         self._initialize_flight_data()
 
         # Set up plots
         self._arrange_plots()
+        self._initialize_near_field_graphic()
         self._initialize_atmos_plot()
         self._initialize_flight_plot()
+
+
+    def _initialize_near_field_data(self):
+        # Reads in data for the near-field pressure signature
+
+        # Read in file
+        with open("data/41N_74W_25D_adapt07_EALINENEW4_psig.dat", 'r') as input_handle:
+
+            # Get lines
+            lines = input_handle.readlines()
+            N = len(lines)
+            self._nf_press_data = np.zeros((N, 2))
+            for i in range(N):
+                split_line = lines[i].split()
+                self._nf_press_data[i,0] = float(split_line[0])
+                self._nf_press_data[i,1] = float(split_line[1])
 
 
     def _initialize_atmos_data(self):
@@ -88,7 +106,7 @@ class BoomDataGUI:
     def _arrange_plots(self):
 
         # Top row
-        self._near_field_view = self._win.addViewBox(row=1, col=1, rowspan=1, colspan=1)
+        self._near_field_layout = self._win.addLayout(row=1, col=1, rowspan=1, colspan=1)
         self._geom_view = self._win.addViewBox(row=1, col=2, rowspan=1, colspan=2)
 
         # Middle row
@@ -99,6 +117,22 @@ class BoomDataGUI:
         self._boom_view = self._win.addViewBox(row=4, col=1, rowspan=1, colspan=1)
         self._pldb_view = self._win.addViewBox(row=4, col=2, rowspan=1, colspan=1)
         self._boom_carpet_view = self._win.addViewBox(row=4, col=3, rowspan=1, colspan=1)
+
+
+    def _initialize_near_field_graphic(self):
+        # Set up near-field pressure graphic
+
+        # Add pressure plot
+        self._P_nf_plot = self._near_field_layout.addPlot(title='Near-Field Pressure Signature', row=2, col=1)
+        self._P_nf_plot.addLegend()
+        self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
+        self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
+
+        # Add slider
+        self._P_nf_silder = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self._P_nf_silder.setMinimum(-90)
+        self._P_nf_silder.setMaximum(90)
+        self._near_field_layout.addWidget(self._P_nf_silder, row=1, col=2)
 
 
     def _initialize_atmos_plot(self):
