@@ -169,14 +169,14 @@ class BoomDataGUI:
 
         # Add aircraft image
         self._mach_line_image = QtGui.QPixmap('image/25D_mach_lines_solid.png')
-        self._mach_image_label = self._near_field_widget.addLabel(row=1, col=1)
+        self._mach_image_label = self._near_field_widget.addLabel(row=1, col=1, rowspan=2)
         self._mach_line_image = self._mach_line_image.scaled(QtCore.QSize(320, 240), QtCore.Qt.KeepAspectRatio)
         self._mach_image_label.setPixmap(self._mach_line_image)
         self._mach_image_label.show()
 
         # Create plot widget
         self._P_nf_plot = pg.PlotWidget(title='Near-Field Pressure Signature')
-        self._near_field_widget.addWidget(self._P_nf_plot, row=2, col=1, colspan=2)
+        self._near_field_widget.addWidget(self._P_nf_plot, row=3, col=1, colspan=2)
 
         # Add pressure plot
         self._P_nf_plot.addLegend()
@@ -185,22 +185,29 @@ class BoomDataGUI:
         self._P_nf_baseline_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
         self._P_nf_optimum_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
 
+        # Add slider label
+        self._P_nf_slider_label = self._near_field_widget.addLabel('Pressure Angle: {0} deg'.format(0.0), row=1, col=2)
+
         # Add slider
-        self._P_nf_silder = QtGui.QSlider(QtCore.Qt.Horizontal)
-        self._P_nf_silder.setMinimum(-90)
-        self._P_nf_silder.setMaximum(90)
-        self._near_field_widget.addWidget(self._P_nf_silder, row=1, col=2)
+        self._P_nf_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        self._P_nf_slider.setMinimum(-90)
+        self._P_nf_slider.setMaximum(90)
+        self._P_nf_slider.setTickPosition(QtGui.QSlider.TicksBelow)
+        self._near_field_widget.addWidget(self._P_nf_slider, row=2, col=2)
         
         # Set up slider connection
         self._P_nf_angle = 0.0
-        self._P_nf_silder.valueChanged.connect(self._update_near_field_angle)
+        self._P_nf_slider.valueChanged.connect(self._update_near_field_angle)
 
 
     def _update_near_field_angle(self):
         # Updates the near-field pressure signature based on the angle of the slider
 
         # Store value
-        self._P_nf_angle = float(self._P_nf_silder.value())
+        self._P_nf_angle = float(self._P_nf_slider.value())
+
+        # Update angle shown
+        self._P_nf_slider_label.setText('Pressure Angle: {0} deg'.format(self._P_nf_angle))
 
         # Update graphs
         self._update_near_field_graph()
