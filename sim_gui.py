@@ -13,6 +13,9 @@ class BoomDataGUI:
 
     def __init__(self):
 
+        # Set pyqtgraph options
+        pg.setConfigOption('background', 'k')
+
         # Initialize application
         self._app = QtGui.QApplication([])
 
@@ -24,32 +27,38 @@ class BoomDataGUI:
         self._initialize_near_field_data()
         self._initialize_atmos_data()
         self._initialize_flight_data()
+        self._initialize_gsig_data()
 
         # Initialize sub layouts and widgets
-        self._atmos_plot_widget = pg.PlotWidget()
-        self._flight_data_widget = pg.GraphicsLayoutWidget()
-        self._boom_widget = pg.PlotWidget()
-        self._pldb_widget = pg.PlotWidget()
+        self._geom_widget = pg.PlotWidget(title='Geometry Alteration')
+        self._atmos_widget = pg.PlotWidget(title='Atmospheric Profile')
+        self._flight_data_widget = pg.GraphicsLayoutWidget(title='Flight Data')
+        self._pldb_widget = pg.PlotWidget(title='Boom Loudness')
+        self._gsig_widget = pg.PlotWidget(title='Ground Pressure Signature')
 
         # Arrange window
 
         # Top row
         self._near_field_widget = self._main_widget.addLayout(row=1, col=1, rowspan=1, colspan=1)
-        self._geom_widget = self._main_widget.addLayout(row=1, col=2, rowspan=1, colspan=2)
+        self._main_widget.addWidget(self._geom_widget, row=1, col=2, rowspan=1, colspan=2)
 
         # Middle row
-        self._main_widget.addWidget(self._atmos_plot_widget, row=2, col=1, rowspan=2, colspan=1)
+        self._main_widget.addWidget(self._atmos_widget, row=2, col=1, rowspan=2, colspan=1)
         self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=2, colspan=2)
 
         # Bottom row
-        self._main_widget.addWidget(self._boom_widget, row=4, col=1, rowspan=1, colspan=1)
-        self._main_widget.addWidget(self._boom_widget, row=4, col=2, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._gsig_widget, row=4, col=1, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._pldb_widget, row=4, col=2, rowspan=1, colspan=1)
         self._boom_carpet_widget = self._main_widget.addLayout(row=4, col=3, rowspan=1, colspan=1)
 
         # Set up individual widgets
         self._initialize_near_field_graphic()
+        self._initialize_geom_plot()
         self._initialize_atmos_plot()
         self._initialize_flight_plot()
+        self._initialize_gsig_plot()
+        self._initialize_pldb_plot()
+        self._initialize_boom_carpet()
 
 
     def start(self):
@@ -72,7 +81,7 @@ class BoomDataGUI:
         # Reads in data for the near-field pressure signature
 
         # Read in file
-        with open("data/41N_74W_25D_adapt07_EALINENEW4_psig.dat", 'r') as input_handle:
+        with open("data/nf_undertrack.txt", 'r') as input_handle:
 
             # Get lines
             lines = input_handle.readlines()
@@ -133,6 +142,22 @@ class BoomDataGUI:
         self._RH = np.array(self._RH)
 
 
+    def _initialize_gsig_data(self):
+        # Read in ground signature data
+
+        # Read in file
+        with open("data/41N_74W_25D_adapt07_EALINENEW4_gsig", 'r') as input_handle:
+
+            # Get lines
+            lines = input_handle.readlines()
+            N = len(lines)
+            self._gsig_data = np.zeros((N, 2))
+            for i in range(N):
+                split_line = lines[i].split()
+                self._gsig_data[i,0] = float(split_line[0])
+                self._gsig_data[i,1] = float(split_line[1])
+
+
     def _initialize_flight_data(self):
 
         # Initialize flight data
@@ -142,12 +167,21 @@ class BoomDataGUI:
     def _initialize_near_field_graphic(self):
         # Set up near-field pressure graphic
 
+        # Add aircraft image
+        self._mach_line_image = QtGui.QPixmap('image/25D_mach_lines_solid.png')
+        self._mach_image_label = self._near_field_widget.addLabel(row=1, col=1)
+        self._mach_line_image = self._mach_line_image.scaled(QtCore.QSize(320, 240), QtCore.Qt.KeepAspectRatio)
+        self._mach_image_label.setPixmap(self._mach_line_image)
+        self._mach_image_label.show()
+
         # Create plot widget
         self._P_nf_plot = pg.PlotWidget(title='Near-Field Pressure Signature')
-        self._near_field_widget.addWidget(self._P_nf_plot, row=2, col=1)
+        self._near_field_widget.addWidget(self._P_nf_plot, row=2, col=1, colspan=2)
 
         # Add pressure plot
         self._P_nf_plot.addLegend()
+        self._P_nf_plot.setLabel('left', 'Pressure', units="Pa")
+        self._P_nf_plot.setLabel('bottom', 'Time', units="s")
         self._P_nf_baseline_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], self._nf_press_data[:,1], name='Baseline', pen="#0000FF")
         self._P_nf_optimum_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
 
@@ -168,22 +202,42 @@ class BoomDataGUI:
         # Store value
         self._P_nf_angle = float(self._P_nf_silder.value())
 
-        # Update graph
+        # Update graphs
         self._update_near_field_graph()
+        self._update_gsig_graph()
+
+
+    def _initialize_geom_plot(self):
+        # Sets up the plot to show the altered geometry
+
+        # Get coordinates
+        x = np.linspace(0, 100, 1000)
+        y_u = 0.000001*x*x*(x-100.0)*(x-100.0)
+        y_l = 0.0000005*(x-100.0)*x*x*x
+        y_l_opt = y_l-np.exp(-0.1*(x-20.0)**2)
+
+        # Plot
+        self._geom_widget.addLegend()
+        self._geom_widget.plot(x, y_u, pen='#0000FF', name='Baseline')
+        self._geom_widget.plot(x, y_l, pen='#0000FF')
+        self._geom_widget.plot(x, y_l_opt, pen='#7777FF', name='Optimum')
+
+        # Set range
+        self._geom_widget.setRange(yRange=[-15, 15])
 
 
     def _initialize_atmos_plot(self):
 
         # Initialize plot
-        self._atmos_plot_widget.setLabel('left', 'Altitude [m]')
-        self._atmos_plot_widget.addLegend()
-        self._atmos_plot_widget.setRange(xRange=[-150, 150])
+        self._atmos_widget.setLabel('left', 'Altitude [m]')
+        self._atmos_widget.addLegend()
+        self._atmos_widget.setRange(xRange=[-150, 150])
 
         # Plot data
-        self._T_curve = self._atmos_plot_widget.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
-        self._u_curve = self._atmos_plot_widget.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
-        self._v_curve = self._atmos_plot_widget.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
-        self._RH_curve = self._atmos_plot_widget.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
+        self._T_curve = self._atmos_widget.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
+        self._u_curve = self._atmos_widget.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
+        self._v_curve = self._atmos_widget.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
+        self._RH_curve = self._atmos_widget.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
 
 
     def _initialize_flight_plot(self):
@@ -280,6 +334,55 @@ class BoomDataGUI:
             self._pldb_base_view.setGeometry(self._h_view.sceneBoundingRect())
             self._pldb_opt_view.setGeometry(self._h_view.sceneBoundingRect())
         self._h_view.sigResized.connect(update_flight_data_views)
+
+
+    def _initialize_gsig_plot(self):
+
+        # Initialize plot
+        self._gsig_widget.setLabel('left', 'Pressure', units="Pa")
+        self._gsig_widget.setLabel('bottom', 'Time', units="s")
+        self._gsig_widget.addLegend()
+
+        # Plot data
+        self._gsig_base_curve = self._gsig_widget.plot(self._gsig_data[:,0], self._gsig_data[:,1], pen="#0000FF", name='Baseline')
+        self._gsig_opt_curve = self._gsig_widget.plot(self._gsig_data[:,0], 0.8*self._gsig_data[:,1], pen="#7777FF", name='Optimum')
+
+
+    def _initialize_pldb_plot(self):
+
+        # Set up plot item
+        self._pldb_plot_item = pg.BarGraphItem(x=[5, 10], height=[83.0, 78.0], width=3, brush='#0000FF', pen='#0000FF')
+
+        # Add to plot
+        self._pldb_widget.addItem(self._pldb_plot_item)
+
+        # Format
+        self._pldb_widget.setLabel('left', 'Perceived Loudness', units='dB')
+
+
+    def _initialize_boom_carpet(self):
+        # Sets up the boom carpet widget
+
+        # Add title
+        self._boom_carpet_widget.addLabel("Boom Carpet", row=1, col=1, colspan=2)
+
+        # Create radio buttons
+        self._rb_base = QtGui.QRadioButton("Baseline")
+        self._rb_base.setChecked(True)
+        self._rb_opt = QtGui.QRadioButton("Optimum")
+        self._rb_del = QtGui.QRadioButton("Delta")
+
+        # Add to layout
+        self._boom_carpet_widget.addWidget(self._rb_base, row=2, col=2)
+        self._boom_carpet_widget.addWidget(self._rb_opt, row=3, col=2)
+        self._boom_carpet_widget.addWidget(self._rb_del, row=4, col=2)
+
+        # Create image
+        self._boom_carpet_image = QtGui.QPixmap('image/boom_carpet.jpeg')
+        self._carpet_image_label = self._boom_carpet_widget.addLabel(row=2, col=1, rowspan=3)
+        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(300, 300), QtCore.Qt.KeepAspectRatio)
+        self._carpet_image_label.setPixmap(self._boom_carpet_image)
+        self._carpet_image_label.show()
 
 
     def _update_graphics(self):
@@ -383,8 +486,15 @@ class BoomDataGUI:
     def _update_near_field_graph(self):
         # Updates the near-field graph
 
-        self._P_nf_baseline_curve.setData(self._nf_press_data[:,0], self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+self._nf_press_data[:,1]**0.5*abs(m.sin(m.radians(self._P_nf_angle))))
-        self._P_nf_optimum_curve.setData(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+0.8*self._nf_press_data[:,1]**0.5*abs(m.sin(m.radians(self._P_nf_angle))))
+        self._P_nf_baseline_curve.setData(self._nf_press_data[:,0], self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+self._nf_press_data[:,1]**2*abs(m.sin(m.radians(self._P_nf_angle))))
+        self._P_nf_optimum_curve.setData(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1]*m.cos(m.radians(self._P_nf_angle))+0.8*self._nf_press_data[:,1]**2*abs(m.sin(m.radians(self._P_nf_angle))))
+
+
+    def _update_gsig_graph(self):
+        # Updates the ground signature plot
+
+        self._gsig_base_curve.setData(self._gsig_data[:,0], self._gsig_data[:,1]*m.cos(m.radians(self._P_nf_angle)))
+        self._gsig_opt_curve.setData(self._gsig_data[:,0], 0.8*self._gsig_data[:,1]*m.cos(m.radians(self._P_nf_angle))**2)
 
 
 if __name__=="__main__":
