@@ -1,6 +1,7 @@
 """Displays real-time sonic boom data for the sim."""
 
 import sys
+import time
 
 import pyqtgraph as pg
 import numpy as np
@@ -12,6 +13,9 @@ class BoomDataGUI:
     """A sonic boom data visualization GUI"""
 
     def __init__(self):
+
+        # Options
+        self._framerate = 50
 
         # Set pyqtgraph options
         pg.setConfigOption('background', 'k')
@@ -43,13 +47,57 @@ class BoomDataGUI:
         self._main_widget.addWidget(self._geom_widget, row=1, col=2, rowspan=1, colspan=2)
 
         # Middle row
-        self._main_widget.addWidget(self._atmos_widget, row=2, col=1, rowspan=2, colspan=1)
-        self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=2, colspan=2)
+        self._main_widget.addWidget(self._atmos_widget, row=2, col=1, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=1, colspan=2)
 
         # Bottom row
-        self._main_widget.addWidget(self._gsig_widget, row=4, col=1, rowspan=1, colspan=1)
-        self._main_widget.addWidget(self._pldb_widget, row=4, col=2, rowspan=1, colspan=1)
-        self._boom_carpet_widget = self._main_widget.addLayout(row=4, col=3, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._gsig_widget, row=3, col=1, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._pldb_widget, row=3, col=2, rowspan=1, colspan=1)
+        self._boom_carpet_widget = self._main_widget.addLayout(row=3, col=3, rowspan=1, colspan=1)
+
+        # Place spacing images (a hack to make things look good...)
+
+        # Row 1
+        self._sr1 = QtGui.QPixmap('image/v_spacer.png')
+        self._sr1_label = self._main_widget.addLabel(row=2, col=4)
+        self._sr1 = self._sr1.scaled(QtCore.QSize(1, 400), QtCore.Qt.KeepAspectRatio)
+        self._sr1_label.setPixmap(self._sr1)
+        self._sr1_label.show()
+
+        # Row 2
+        self._sr2 = QtGui.QPixmap('image/v_spacer.png')
+        self._sr2_label = self._main_widget.addLabel(row=2, col=4)
+        self._sr2 = self._sr2.scaled(QtCore.QSize(1, 400), QtCore.Qt.KeepAspectRatio)
+        self._sr2_label.setPixmap(self._sr2)
+        self._sr2_label.show()
+
+        # Row 2
+        self._sr3 = QtGui.QPixmap('image/v_spacer.png')
+        self._sr3_label = self._main_widget.addLabel(row=3, col=4)
+        self._sr3 = self._sr3.scaled(QtCore.QSize(1, 200), QtCore.Qt.KeepAspectRatio)
+        self._sr3_label.setPixmap(self._sr3)
+        self._sr3_label.show()
+
+        # Col 1
+        self._sc1 = QtGui.QPixmap('image/h_spacer.png')
+        self._sc1_label = self._main_widget.addLabel(row=4, col=1)
+        self._sc1 = self._sc1.scaled(QtCore.QSize(100, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc1_label.setPixmap(self._sc1)
+        self._sc1_label.show()
+
+        # Col 2
+        self._sc2 = QtGui.QPixmap('image/h_spacer.png')
+        self._sc2_label = self._main_widget.addLabel(row=4, col=2)
+        self._sc2 = self._sc2.scaled(QtCore.QSize(300, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc2_label.setPixmap(self._sc2)
+        self._sc2_label.show()
+
+        # Col 2
+        self._sc3 = QtGui.QPixmap('image/h_spacer.png')
+        self._sc3_label = self._main_widget.addLabel(row=4, col=3)
+        self._sc3 = self._sc3.scaled(QtCore.QSize(200, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc3_label.setPixmap(self._sc3)
+        self._sc3_label.show()
 
         # Set up individual widgets
         self._initialize_near_field_graphic()
@@ -64,10 +112,14 @@ class BoomDataGUI:
     def start(self):
         """Starts the GUI."""
 
+
+        # Set start time
+        self._t0 = time.time()
+
         # Set timer
         self._timer = QtCore.QTimer()
         self._timer.timeout.connect(self._update_graphics)
-        self._timer.start(50)
+        self._timer.start(self._framerate)
 
         # Show window
         self._main_widget.show()
@@ -160,8 +212,19 @@ class BoomDataGUI:
 
     def _initialize_flight_data(self):
 
-        # Initialize flight data
-        self._flight_data = np.zeros((5, 300))
+        # Read in file
+        with open('data/flight_log.csv', 'r') as input_handle:
+
+            # Convert from CSV
+            # Columns: Time, Mach, Alpha_D, Altitude, Latitude, Longitude
+            self._flight_data = np.genfromtxt(input_handle, delimiter=',', skip_header=1)
+
+        # Set display options
+        self._max_flight_data_points = 30
+
+        # Initialize PL dB storage
+        self._pldb_base_data = []
+        self._pldb_opt_data = []
 
 
     def _initialize_near_field_graphic(self):
@@ -186,7 +249,7 @@ class BoomDataGUI:
         self._P_nf_optimum_curve = self._P_nf_plot.plot(self._nf_press_data[:,0], 0.8*self._nf_press_data[:,1], name='Optimum', pen="#7777FF")
 
         # Add slider label
-        self._P_nf_slider_label = self._near_field_widget.addLabel('Pressure Angle: {0} deg'.format(0.0), row=1, col=2)
+        self._P_nf_slider_label = self._near_field_widget.addLabel('Azimuth Angle: {0} deg'.format(0.0), row=1, col=2, alignment=QtCore.Qt.AlignCenter)
 
         # Add slider
         self._P_nf_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
@@ -207,7 +270,7 @@ class BoomDataGUI:
         self._P_nf_angle = float(self._P_nf_slider.value())
 
         # Update angle shown
-        self._P_nf_slider_label.setText('Pressure Angle: {0} deg'.format(self._P_nf_angle))
+        self._P_nf_slider_label.setText('Azimuth Angle: {0} deg'.format(self._P_nf_angle))
 
         # Update graphs
         self._update_near_field_graph()
@@ -217,20 +280,29 @@ class BoomDataGUI:
     def _initialize_geom_plot(self):
         # Sets up the plot to show the altered geometry
 
+        # Set bump location
+        self._x_bump = 20.0
+
         # Get coordinates
-        x = np.linspace(0, 100, 1000)
-        y_u = 0.000001*x*x*(x-100.0)*(x-100.0)
-        y_l = 0.0000005*(x-100.0)*x*x*x
-        y_l_opt = y_l-np.exp(-0.1*(x-20.0)**2)
+        self._x = np.linspace(0, 100, 1000)
+        y_u = 0.000001*self._x*self._x*(self._x-100.0)*(self._x-100.0)
+        self._y_l = 0.0000005*(self._x-100.0)*self._x*self._x*self._x
+        y_l_opt = self._y_l-np.exp(-0.1*(self._x-self._x_bump)**2)
 
         # Plot
         self._geom_widget.addLegend()
-        self._geom_widget.plot(x, y_u, pen='#0000FF', name='Baseline')
-        self._geom_widget.plot(x, y_l, pen='#0000FF')
-        self._geom_widget.plot(x, y_l_opt, pen='#7777FF', name='Optimum')
+        self._geom_widget.plot(self._x, y_u, pen='#0000FF', name='Baseline')
+        self._geom_widget.plot(self._x, self._y_l, pen='#0000FF')
+        self._bump_curve = self._geom_widget.plot(self._x, y_l_opt, pen='#7777FF', name='Optimum')
 
-        # Set range
+        # Format
+        self._geom_widget.setLabel('bottom', 'self._x')
+        self._geom_widget.setLabel('left', 'y')
         self._geom_widget.setRange(yRange=[-15, 15])
+
+        # Add bump location label
+        self._bump_label = pg.TextItem(text='Bump Location: x={0}'.format(round(self._x_bump, 3)), anchor=(0.0, -0.5))
+        self._geom_widget.addItem(self._bump_label)
 
 
     def _initialize_atmos_plot(self):
@@ -242,50 +314,47 @@ class BoomDataGUI:
 
         # Plot data
         self._T_curve = self._atmos_widget.plot(self._T, self._h, pen=(255, 0, 0), name='T [F]')
-        self._u_curve = self._atmos_widget.plot(self._u, self._h, pen=(0, 255, 0), name='Wind x-Velocity [m/s]')
+        self._u_curve = self._atmos_widget.plot(self._u, self._h, pen=(0, 255, 0), name='Wind self._x-Velocity [m/s]')
         self._v_curve = self._atmos_widget.plot(self._v, self._h, pen=(155, 255, 55), name='Wind y-Velocity [m/s]')
         self._RH_curve = self._atmos_widget.plot(self._RH, self._h, pen=(0, 0, 255), name='Relative Humidity [%]')
 
 
     def _initialize_flight_plot(self):
 
-        # Initialize data curve origin (incrementing this leads to the scrolling effect)
-        self._ptr = 0
-
         # Create altitude plot
         h_color = "#0000FF"
         self._h_axis = pg.AxisItem('left')
         self._h_axis.setLabel('Altitude', units='m', color=h_color)
         self._h_view = pg.ViewBox()
-        self._h_curve = pg.PlotCurveItem(self._flight_data[2], pen=h_color)
+        self._h_curve = pg.ScatterPlotItem(self._flight_data[:1,0], self._flight_data[:1,3], pen=h_color, brush=h_color, symbol='o')
 
         # Create Mach plot
         M_color = "#00FF00"
         self._M_axis = pg.AxisItem('left')
         self._M_axis.setLabel('Mach Number', color=M_color)
         self._M_view = pg.ViewBox()
-        self._M_curve = pg.PlotCurveItem(self._flight_data[1], pen=M_color)
+        self._M_curve = pg.ScatterPlotItem(self._flight_data[:1,0], self._flight_data[:1,1], pen=M_color, brush=M_color, symbol='+')
 
         # Create angle of attack plot
         a_color = "#FFFF00"
         self._a_axis = pg.AxisItem('left')
         self._a_axis.setLabel('Angle of Attack', units='deg', color=a_color)
         self._a_view = pg.ViewBox()
-        self._a_curve = pg.PlotCurveItem(self._flight_data[0], pen=a_color)
+        self._a_curve = pg.ScatterPlotItem(self._flight_data[:1,0], self._flight_data[:1,2], pen=a_color, brush=a_color, symbol='s')
 
         # Create baseline PLdB plot
         pldb_base_color = "#FF0000"
         self._pldb_base_axis = pg.AxisItem('left')
         self._pldb_base_axis.setLabel('PL (baseline)', units='dB', color=pldb_base_color)
         self._pldb_base_view = pg.ViewBox()
-        self._pldb_base_curve = pg.PlotCurveItem(self._flight_data[3], pen=pldb_base_color)
+        self._pldb_base_curve = pg.ScatterPlotItem(self._flight_data[:1,0], self._flight_data[:1,4], pen=pldb_base_color, brush=pldb_base_color, symbol='d')
 
         # Create optimum PLdB plot
         pldb_opt_color = "#FF5555"
         self._pldb_opt_axis = pg.AxisItem('left')
         self._pldb_opt_axis.setLabel('PL (optimum)', units='dB', color=pldb_opt_color)
         self._pldb_opt_view = pg.ViewBox()
-        self._pldb_opt_curve = pg.PlotCurveItem(self._flight_data[4], pen=pldb_opt_color)
+        self._pldb_opt_curve = pg.ScatterPlotItem(self._flight_data[:1,0], self._flight_data[:1,5], pen=pldb_opt_color, brush=pldb_opt_color, symbol='t')
 
         # Create time axis
         self._t_axis = pg.AxisItem('bottom')
@@ -318,7 +387,7 @@ class BoomDataGUI:
         self._pldb_base_axis.linkToView(self._pldb_base_view)
         self._pldb_opt_axis.linkToView(self._pldb_opt_view)
 
-        # Link x axis of viewboxes to base plot
+        # Link self._x axis of viewboxes to base plot
         self._M_view.setXLink(self._h_view)
         self._a_view.setXLink(self._h_view)
         self._pldb_base_view.setXLink(self._h_view)
@@ -358,7 +427,7 @@ class BoomDataGUI:
     def _initialize_pldb_plot(self):
 
         # Set up plot item
-        self._pldb_plot_item = pg.BarGraphItem(x=[5, 10], height=[83.0, 78.0], width=3, brush='#0000FF', pen='#0000FF')
+        self._pldb_plot_item = pg.BarGraphItem(x=[0, 3], height=[83.0, 78.0], width=1.5, brush='#0000FF', pen='#0000FF')
 
         # Add to plot
         self._pldb_widget.addItem(self._pldb_plot_item)
@@ -371,7 +440,7 @@ class BoomDataGUI:
         # Sets up the boom carpet widget
 
         # Add title
-        self._boom_carpet_widget.addLabel("Boom Carpet", row=1, col=1, colspan=2)
+        self._boom_carpet_widget.addLabel("Boom Carpet", row=1, col=1, colspan=2, alignment=QtCore.Qt.AlignCenter)
 
         # Create radio buttons
         self._rb_base = QtGui.QRadioButton("Baseline")
@@ -387,7 +456,7 @@ class BoomDataGUI:
         # Create image
         self._boom_carpet_image = QtGui.QPixmap('image/boom_carpet.jpeg')
         self._carpet_image_label = self._boom_carpet_widget.addLabel(row=2, col=1, rowspan=3)
-        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(300, 300), QtCore.Qt.KeepAspectRatio)
+        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(250, 250), QtCore.Qt.KeepAspectRatio)
         self._carpet_image_label.setPixmap(self._boom_carpet_image)
         self._carpet_image_label.show()
 
@@ -397,57 +466,35 @@ class BoomDataGUI:
 
         # Update data
         self._update_atmos_data()
-        self._update_flight_data()
 
         # Update plots
+        self._update_geom_plot()
         self._update_atmos_plot()
         self._update_flight_plot()
+
+
+    def _update_geom_plot(self):
+        # Updates the geometry plot
+
+        # Move the bump
+        self._x_bump += float(np.random.normal(size=1, scale=0.1))
+        y_l_opt = self._y_l-np.exp(-0.1*(self._x-self._x_bump)**2)
+
+        # Plot
+        self._bump_curve.setData(self._x, y_l_opt)
+
+        # Update label
+        self._bump_label.setText('Bump Location: x={0}'.format(round(self._x_bump, 3)))
 
 
     def _update_atmos_data(self):
         # Updates the data shown in the atmospheric profile plot
 
-        self._h += np.random.normal(size=len(self._h), scale=0.01)
-        self._T += np.random.normal(size=len(self._T), scale=0.01)
-        self._u += np.random.normal(size=len(self._u), scale=0.01)
-        self._v += np.random.normal(size=len(self._v), scale=0.01)
-        self._RH += np.random.normal(size=len(self._RH), scale=0.01)
-
-
-    def _update_flight_data(self):
-        # Updates the flight data
-
-        ptr_peak = 1000
-
-        # Cycle
-        self._flight_data[:,:-1] = self._flight_data[:,1:]
-
-        # Angle of attack
-        if self._ptr < ptr_peak:
-            self._flight_data[0,-1] = 6.0+np.random.normal(size=1, scale=0.1)
-        else:
-            self._flight_data[0,-1] = 2.3+np.random.normal(size=1, scale=0.1)
-
-        # Mach number
-        if self._ptr < ptr_peak:
-            self._flight_data[1,-1] = 1.6*self._ptr/ptr_peak+np.random.normal(size=1, scale=0.01)
-        else:
-            self._flight_data[1,-1] = 1.6+np.random.normal(size=1, scale=0.01)
-
-        # Altitude
-        if self._ptr < ptr_peak:
-            self._flight_data[2,-1] = 10000*self._ptr/ptr_peak+np.random.normal(size=1, scale=3000.0/ptr_peak)
-        else:
-            self._flight_data[2,-1] = 10000+np.random.normal(size=1, scale=10.0)
-
-        # PL dB
-        M = self._flight_data[1,-1]
-        if M > 1.0:
-            self._flight_data[3,-1] = 83.0*M**0.5+np.random.normal(size=1, scale=0.5)
-            self._flight_data[4,-1] = 80.0*M**0.4+np.random.normal(size=1, scale=0.5)
-        else:
-            self._flight_data[3,-1] = 0.1
-            self._flight_data[4,-1] = 0.1
+        self._h += np.random.normal(size=len(self._h), scale=0.05)
+        self._T += np.random.normal(size=len(self._T), scale=0.05)
+        self._u += np.random.normal(size=len(self._u), scale=0.05)
+        self._v += np.random.normal(size=len(self._v), scale=0.05)
+        self._RH += np.random.normal(size=len(self._RH), scale=0.05)
 
 
     def _update_atmos_plot(self):
@@ -461,33 +508,35 @@ class BoomDataGUI:
     
     def _update_flight_plot(self):
         # Updates the flight data plot
+        # Columns: Time, Mach, Alpha_D, Altitude, Latitude, Longitude
 
-        # Scroll
-        self._ptr += 1
+        # Get indices of points to be plotted
+        t_curr = time.time()-self._t0
+        curr_ind = np.argwhere(self._flight_data[:,0].flatten()<t_curr).flatten()
+
+        # Make sure we're only plotting so many
+        if len(curr_ind)>self._max_flight_data_points:
+            curr_ind = curr_ind[-self._max_flight_data_points:]
+        
+        # Make sure we're plotting at least two
+        if len(curr_ind)<2:
+            curr_ind = [0, 1]
 
         # Altitude
-        self._h_curve.setData(self._flight_data[2])
-        self._h_curve.setPos(self._ptr, 0)
-        self._h_view.setRange(yRange=(0, np.max(self._flight_data[2])))
+        self._h_curve.setData(self._flight_data[curr_ind,0], self._flight_data[curr_ind,3])
 
         # Mach number
-        self._M_curve.setData(self._flight_data[1])
-        self._M_curve.setPos(self._ptr, 0)
-        self._M_view.setRange(yRange=(0, 1.5*np.max(self._flight_data[1])))
+        self._M_curve.setData(self._flight_data[curr_ind,0], self._flight_data[curr_ind,1])
 
         # Angle of attack
-        self._a_curve.setData(self._flight_data[0])
-        self._a_curve.setPos(self._ptr, 0)
-        self._a_view.setRange(yRange=(0, 1.25*np.max(self._flight_data[0])))
+        self._a_curve.setData(self._flight_data[curr_ind,0], self._flight_data[curr_ind,2])
 
         # Baseline PL dB
-        self._pldb_base_curve.setData(self._flight_data[3])
-        self._pldb_base_curve.setPos(self._ptr, 0)
-        self._pldb_base_view.setRange(yRange=(0, np.max(self._flight_data[3])))
+        self._pldb_base_curve.setData(self._flight_data[curr_ind,0], 83.0*np.ones_like(curr_ind))
+        self._pldb_base_view.setRange(yRange=(60.0, 90.0))
 
         # Optimum PL dB
-        self._pldb_opt_curve.setData(self._flight_data[4])
-        self._pldb_opt_curve.setPos(self._ptr, 0)
+        self._pldb_opt_curve.setData(self._flight_data[curr_ind,0], 78.0*np.ones_like(curr_ind))
 
 
     def _update_near_field_graph(self):
