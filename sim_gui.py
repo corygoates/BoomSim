@@ -59,22 +59,22 @@ class BoomDataGUI:
 
         # Row 1
         self._sr1 = QtGui.QPixmap('image/v_spacer.png')
-        self._sr1_label = self._main_widget.addLabel(row=2, col=4)
-        self._sr1 = self._sr1.scaled(QtCore.QSize(1, 400), QtCore.Qt.KeepAspectRatio)
+        self._sr1_label = self._main_widget.addLabel(row=1, col=4)
+        self._sr1 = self._sr1.scaled(QtCore.QSize(1, 200), QtCore.Qt.KeepAspectRatio)
         self._sr1_label.setPixmap(self._sr1)
         self._sr1_label.show()
 
         # Row 2
         self._sr2 = QtGui.QPixmap('image/v_spacer.png')
         self._sr2_label = self._main_widget.addLabel(row=2, col=4)
-        self._sr2 = self._sr2.scaled(QtCore.QSize(1, 400), QtCore.Qt.KeepAspectRatio)
+        self._sr2 = self._sr2.scaled(QtCore.QSize(1, 250), QtCore.Qt.KeepAspectRatio)
         self._sr2_label.setPixmap(self._sr2)
         self._sr2_label.show()
 
-        # Row 2
+        # Row 3
         self._sr3 = QtGui.QPixmap('image/v_spacer.png')
         self._sr3_label = self._main_widget.addLabel(row=3, col=4)
-        self._sr3 = self._sr3.scaled(QtCore.QSize(1, 200), QtCore.Qt.KeepAspectRatio)
+        self._sr3 = self._sr3.scaled(QtCore.QSize(1, 150), QtCore.Qt.KeepAspectRatio)
         self._sr3_label.setPixmap(self._sr3)
         self._sr3_label.show()
 
@@ -463,7 +463,7 @@ class BoomDataGUI:
         # Create image
         self._boom_carpet_image = QtGui.QPixmap('image/boom_carpet.jpeg')
         self._carpet_image_label = self._boom_carpet_widget.addLabel(row=2, col=1, rowspan=3)
-        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(250, 250), QtCore.Qt.KeepAspectRatio)
+        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(150, 150), QtCore.Qt.KeepAspectRatio)
         self._carpet_image_label.setPixmap(self._boom_carpet_image)
         self._carpet_image_label.show()
 
