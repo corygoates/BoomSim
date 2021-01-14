@@ -435,6 +435,13 @@ class BoomDataGUI:
         # Format
         self._pldb_widget.setLabel('left', 'Perceived Loudness', units='dB')
 
+        # Add text
+        #base_label = pg.TextItem(text='Baseline', anchor=(0.2, 9.5))
+        #opt_label = pg.TextItem(text='Optimum', anchor=(-1.0, 9.0))
+        #base_label.setParentItem
+        #self._pldb_widget.addItem(
+        #self._pldb_widget.addItem(
+
 
     def _initialize_boom_carpet(self):
         # Sets up the boom carpet widget
