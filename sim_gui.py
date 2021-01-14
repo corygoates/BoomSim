@@ -38,43 +38,45 @@ class BoomDataGUI:
         self._atmos_widget = pg.PlotWidget(title='Atmospheric Profile')
         self._flight_data_widget = pg.GraphicsLayoutWidget(title='Flight Data')
         self._pldb_widget = pg.PlotWidget(title='Boom Loudness')
+        self._drag_widget = pg.PlotWidget(title='Drag Coefficient')
         self._gsig_widget = pg.PlotWidget(title='Ground Pressure Signature')
 
         # Arrange window
 
         # Top row
         self._near_field_widget = self._main_widget.addLayout(row=1, col=1, rowspan=1, colspan=1)
-        self._main_widget.addWidget(self._geom_widget, row=1, col=2, rowspan=1, colspan=2)
+        self._main_widget.addWidget(self._geom_widget, row=1, col=2, rowspan=1, colspan=3)
 
         # Middle row
         self._main_widget.addWidget(self._atmos_widget, row=2, col=1, rowspan=1, colspan=1)
-        self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=1, colspan=2)
+        self._main_widget.addWidget(self._flight_data_widget, row=2, col=2, rowspan=1, colspan=3)
 
         # Bottom row
         self._main_widget.addWidget(self._gsig_widget, row=3, col=1, rowspan=1, colspan=1)
         self._main_widget.addWidget(self._pldb_widget, row=3, col=2, rowspan=1, colspan=1)
-        self._boom_carpet_widget = self._main_widget.addLayout(row=3, col=3, rowspan=1, colspan=1)
+        self._main_widget.addWidget(self._drag_widget, row=3, col=3, rowspan=1, colspan=1)
+        self._boom_carpet_widget = self._main_widget.addLayout(row=3, col=4, rowspan=1, colspan=1)
 
         # Place spacing images (a hack to make things look good...)
 
         # Row 1
         self._sr1 = QtGui.QPixmap('image/v_spacer.png')
-        self._sr1_label = self._main_widget.addLabel(row=1, col=4)
+        self._sr1_label = self._main_widget.addLabel(row=1, col=5)
         self._sr1 = self._sr1.scaled(QtCore.QSize(1, 200), QtCore.Qt.KeepAspectRatio)
         self._sr1_label.setPixmap(self._sr1)
         self._sr1_label.show()
 
         # Row 2
         self._sr2 = QtGui.QPixmap('image/v_spacer.png')
-        self._sr2_label = self._main_widget.addLabel(row=2, col=4)
+        self._sr2_label = self._main_widget.addLabel(row=2, col=5)
         self._sr2 = self._sr2.scaled(QtCore.QSize(1, 250), QtCore.Qt.KeepAspectRatio)
         self._sr2_label.setPixmap(self._sr2)
         self._sr2_label.show()
 
         # Row 3
         self._sr3 = QtGui.QPixmap('image/v_spacer.png')
-        self._sr3_label = self._main_widget.addLabel(row=3, col=4)
-        self._sr3 = self._sr3.scaled(QtCore.QSize(1, 150), QtCore.Qt.KeepAspectRatio)
+        self._sr3_label = self._main_widget.addLabel(row=3, col=5)
+        self._sr3 = self._sr3.scaled(QtCore.QSize(1, 200), QtCore.Qt.KeepAspectRatio)
         self._sr3_label.setPixmap(self._sr3)
         self._sr3_label.show()
 
@@ -88,16 +90,23 @@ class BoomDataGUI:
         # Col 2
         self._sc2 = QtGui.QPixmap('image/h_spacer.png')
         self._sc2_label = self._main_widget.addLabel(row=4, col=2)
-        self._sc2 = self._sc2.scaled(QtCore.QSize(300, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc2 = self._sc2.scaled(QtCore.QSize(100, 1), QtCore.Qt.KeepAspectRatio)
         self._sc2_label.setPixmap(self._sc2)
         self._sc2_label.show()
 
-        # Col 2
+        # Col 3
         self._sc3 = QtGui.QPixmap('image/h_spacer.png')
         self._sc3_label = self._main_widget.addLabel(row=4, col=3)
-        self._sc3 = self._sc3.scaled(QtCore.QSize(200, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc3 = self._sc3.scaled(QtCore.QSize(100, 1), QtCore.Qt.KeepAspectRatio)
         self._sc3_label.setPixmap(self._sc3)
         self._sc3_label.show()
+
+        # Col 4
+        self._sc4 = QtGui.QPixmap('image/h_spacer.png')
+        self._sc4_label = self._main_widget.addLabel(row=4, col=4)
+        self._sc4 = self._sc4.scaled(QtCore.QSize(300, 1), QtCore.Qt.KeepAspectRatio)
+        self._sc4_label.setPixmap(self._sc4)
+        self._sc4_label.show()
 
         # Set up individual widgets
         self._initialize_near_field_graphic()
@@ -106,6 +115,7 @@ class BoomDataGUI:
         self._initialize_flight_plot()
         self._initialize_gsig_plot()
         self._initialize_pldb_plot()
+        self._initialize_drag_plot()
         self._initialize_boom_carpet()
 
 
@@ -427,7 +437,7 @@ class BoomDataGUI:
     def _initialize_pldb_plot(self):
 
         # Set up plot item
-        self._pldb_plot_item = pg.BarGraphItem(x=[0, 3], height=[83.0, 78.0], width=1.5, brush='#0000FF', pen='#0000FF')
+        self._pldb_plot_item = pg.BarGraphItem(x=[0, 2], height=[83.0, 78.0], width=2, brush='#0000AA', pen='#FFFFFF')
 
         # Add to plot
         self._pldb_widget.addItem(self._pldb_plot_item)
@@ -436,11 +446,32 @@ class BoomDataGUI:
         self._pldb_widget.setLabel('left', 'Perceived Loudness', units='dB')
 
         # Add text
-        #base_label = pg.TextItem(text='Baseline', anchor=(0.2, 9.5))
-        #opt_label = pg.TextItem(text='Optimum', anchor=(-1.0, 9.0))
-        #base_label.setParentItem
-        #self._pldb_widget.addItem(
-        #self._pldb_widget.addItem(
+        base_label = pg.TextItem(text='Baseline', anchor=(0.5, 8.0))
+        opt_label = pg.TextItem(text='Optimum', anchor=(-1.6, 7.0))
+        base_label.setParentItem(self._pldb_plot_item)
+        opt_label.setParentItem(self._pldb_plot_item)
+        self._pldb_widget.addItem(base_label)
+        self._pldb_widget.addItem(opt_label)
+
+
+    def _initialize_drag_plot(self):
+
+        # Set up plot item
+        self._drag_plot_item = pg.BarGraphItem(x=[0, 2], height=[0.01, 0.013], width=2, brush='#0000AA', pen='#FFFFFF')
+
+        # Add to plot
+        self._drag_widget.addItem(self._drag_plot_item)
+
+        # Format
+        self._drag_widget.setLabel('left', 'Drag Coefficient')
+
+        # Add text
+        base_label = pg.TextItem(text='Baseline', anchor=(0.5, 5.0))
+        opt_label = pg.TextItem(text='Optimum', anchor=(-1.6, 7.0))
+        base_label.setParentItem(self._drag_plot_item)
+        opt_label.setParentItem(self._drag_plot_item)
+        self._drag_widget.addItem(base_label)
+        self._drag_widget.addItem(opt_label)
 
 
     def _initialize_boom_carpet(self):
@@ -463,7 +494,7 @@ class BoomDataGUI:
         # Create image
         self._boom_carpet_image = QtGui.QPixmap('image/boom_carpet.jpeg')
         self._carpet_image_label = self._boom_carpet_widget.addLabel(row=2, col=1, rowspan=3)
-        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(150, 150), QtCore.Qt.KeepAspectRatio)
+        self._boom_carpet_image = self._boom_carpet_image.scaled(QtCore.QSize(250, 250), QtCore.Qt.KeepAspectRatio)
         self._carpet_image_label.setPixmap(self._boom_carpet_image)
         self._carpet_image_label.show()
 
